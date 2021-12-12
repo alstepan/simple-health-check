@@ -1,0 +1,13 @@
+/project/project/
+/project/.bloop/
+/.vscode/
+/.metals/
+/.bsp/
+/.bloop/
+/target/
+/.idea/
+/example-service/target/
+/example-service/.idea/
+/example-service/.bsp/
+/example-service/project/target/
+/project/target/

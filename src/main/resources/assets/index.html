@@ -1,0 +1,82 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <title>Service health check monitor</title>
+    </head>
+    <body>
+
+        <div>
+            <canvas id="myChart"></canvas>
+        </div>
+
+        <script src="chart.js"></script>
+        <script src="jquery-3.6.0.js"></script>
+
+<script>
+  const labels = [ ];
+  const data = {
+    labels: labels,
+    datasets: [{
+      label: 'Health monitor',
+      backgroundColor: 'rgb(255, 99, 132)',
+      borderColor: 'rgb(255, 99, 132)',
+      data: [],
+    }]
+  };
+
+  const config = {
+    type: 'line',
+    data: data,
+    options: {
+	responsive: true,
+	interaction: {
+      		intersect: false,
+    	},
+	animation: {
+        	duration: 0
+    	}
+    }
+  };
+
+  const myChart = new Chart(
+    document.getElementById('myChart'),
+    config
+  );
+
+  var getData = function() {
+  $.ajax({
+    url: 'http://localhost:8080/stat/query',
+    success: function(d) {
+      myChart.data.labels = []
+      myChart.data.datasets = [];
+
+      var services = {}
+      var count = 0;
+      var data = JSON.parse(d)
+      data = data.slice(Math.max(data.length - 50, 0))
+
+      for(var i=0; i<data.length; i++) {
+         if (!myChart.data.labels.includes(data[i].time)) myChart.data.labels.push(data[i].time);
+         if (!(data[i].id in services)) {
+		services[data[i].id]=count;
+		count++;
+		myChart.data.datasets.push({
+      			label: data[i].id,
+			data: []
+		})
+	 }
+         console.log(myChart.data.datasets[services[data[i].id]].data);
+         myChart.data.datasets[services[data[i].id]].data.push(data[i].responseTime);
+      }
+      // re-render the chart
+      myChart.update();
+    }
+  });
+  };
+  setInterval(getData, 3000);
+
+
+</script>
+
+    </body>
+</html>
