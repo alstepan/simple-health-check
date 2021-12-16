@@ -1,10 +1,11 @@
 package me.alstepan.healthcheck.repositories
 
 import cats.data.EitherT
-import cats.implicits._
-import cats.effect.Concurrent
+import cats.effect.{Concurrent, Sync}
+import doobie.Transactor
 import me.alstepan.healthcheck.Domain.Services.{Service, ServiceId}
-import me.alstepan.healthcheck.repositories.inmemory.ServiceRepositoryImpl
+import me.alstepan.healthcheck.repositories.database.{ServiceRepositoryImpl => db}
+import me.alstepan.healthcheck.repositories.inmemory.{ServiceRepositoryImpl => memory}
 
 trait ServiceRepository[F[_]] {
 
@@ -21,6 +22,7 @@ object ServiceRepository {
   case class ServiceNotFound(id: ServiceId) extends Error
   case class ServiceAlreadyRegistered(id: ServiceId) extends Error
 
-  def inMemory[F[_]: Concurrent]: F[ServiceRepository[F]] = ServiceRepositoryImpl.apply[F]
+  def inMemory[F[_]: Concurrent]: F[ServiceRepository[F]] = memory.apply[F]
+  def doobie[F[_]: Sync](tr: Transactor[F]): F[ServiceRepository[F]] = db.apply[F](tr)
 
 }

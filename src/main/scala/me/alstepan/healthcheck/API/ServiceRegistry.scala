@@ -1,22 +1,14 @@
 package me.alstepan.healthcheck.API
 
 import cats.effect.Concurrent
-import cats.instances.all._
 import cats.implicits._
-import cats.effect.implicits._
 import io.circe.Encoder._
-import org.http4s.implicits._
-import org.http4s._
-import org.http4s.dsl.Http4sDsl
-import org.http4s.circe._
-import io.circe._
 import io.circe.parser.parse
 import io.circe.syntax._
-import io.circe.literal._
-import io.circe.{Decoder, DecodingFailure, Encoder, Json}
-import io.circe.generic.semiauto._
 import me.alstepan.healthcheck.Domain.Services._
 import me.alstepan.healthcheck.repositories.ServiceRepository
+import org.http4s._
+import org.http4s.dsl.Http4sDsl
 
 class ServiceRegistry[F[_]: Concurrent](serviceRepo: ServiceRepository[F]) {
 

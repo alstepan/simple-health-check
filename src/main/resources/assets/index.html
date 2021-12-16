@@ -43,6 +43,14 @@
     config
   );
 
+  function rnd(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+ 
+  var colors = Array(100).fill(`rgb(${rnd(0,150)}, ${rnd(0,150)}, ${rnd(0,150)})`)
+
   var getData = function() {
   $.ajax({
     url: 'http://localhost:8080/stat/query',
@@ -52,6 +60,7 @@
 
       var services = {}
       var count = 0;
+      var maxLength = 0;
       var data = JSON.parse(d)
       data = data.slice(Math.max(data.length - 50, 0))
 
@@ -62,11 +71,18 @@
 		count++;
 		myChart.data.datasets.push({
       			label: data[i].id,
+                        borderColor: colors[count],
 			data: []
 		})
 	 }
-         console.log(myChart.data.datasets[services[data[i].id]].data);
-         myChart.data.datasets[services[data[i].id]].data.push(data[i].responseTime);
+         var ref = myChart.data.datasets[services[data[i].id]].data
+         ref.push(data[i].responseTime);
+         if (ref.length > maxLength) maxLength = ref.length
+      }
+      for (var i=0; i<data.length; i++) {
+         var ref = myChart.data.datasets[services[data[i].id]].data
+         if (ref.length < maxLength) 
+            myChart.data.datasets[services[data[i].id]].data = Array(maxLength - ref.length).fill(0).concat(ref)         
       }
       // re-render the chart
       myChart.update();

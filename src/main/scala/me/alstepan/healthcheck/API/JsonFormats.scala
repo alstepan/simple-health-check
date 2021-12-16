@@ -1,14 +1,11 @@
 package me.alstepan.healthcheck.API
 
-import java.net.URI
-import cats.implicits._
-import io.circe.Json.JString
+import io.circe.generic.semiauto._
 import io.circe.literal._
 import io.circe.syntax._
-import io.circe.parser.parse
-import io.circe.{Decoder, DecodingFailure, Encoder, Json}
-import io.circe.generic.semiauto._
+import io.circe.{Decoder, Encoder}
 
+import java.net.URI
 import java.sql.Timestamp
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.util.Try

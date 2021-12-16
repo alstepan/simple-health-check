@@ -3,11 +3,12 @@ package me.alstepan.healthcheck.repositories.inmemory
 import cats.data.EitherT
 import cats.implicits._
 import cats.effect.implicits._
-import cats.effect.{Concurrent, Ref}
+import cats.effect.{Concurrent, Ref, Sync}
 import me.alstepan.healthcheck.Domain.Services
 import me.alstepan.healthcheck.Domain.Services.{Service, ServiceId}
 import me.alstepan.healthcheck.repositories.ServiceRepository
 import me.alstepan.healthcheck.repositories.ServiceRepository.ServiceNotFound
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import java.net.URI
 import scala.concurrent.duration.DurationInt

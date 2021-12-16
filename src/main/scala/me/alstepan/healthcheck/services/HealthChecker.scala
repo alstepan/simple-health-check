@@ -1,13 +1,12 @@
 package me.alstepan.healthcheck.services
 
-import me.alstepan.healthcheck.repositories.{HealthCheckRepository, ServiceRepository}
-import cats._
 import cats.effect.Temporal
-import cats.implicits._
 import cats.effect.implicits._
 import cats.effect.kernel.Resource
+import cats.implicits._
 import me.alstepan.healthcheck.Domain.Services.{HealthCheckResult, Service}
 import me.alstepan.healthcheck.config.HealthCheckConfig
+import me.alstepan.healthcheck.repositories.{HealthCheckRepository, ServiceRepository}
 import org.http4s.client.{Client, ConnectionFailure}
 
 import java.sql.Timestamp
