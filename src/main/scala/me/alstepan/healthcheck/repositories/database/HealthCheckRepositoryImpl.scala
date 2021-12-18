@@ -10,6 +10,7 @@ import io.getquill.{CompositeNamingStrategy2, Escape, Literal}
 import me.alstepan.healthcheck.Domain.Services.{HealthCheckResult, ServiceId}
 import me.alstepan.healthcheck.repositories.infra.Database
 import me.alstepan.healthcheck.repositories.HealthCheckRepository
+import fs2.Stream
 
 import java.sql.Timestamp
 
@@ -28,34 +29,34 @@ class HealthCheckRepositoryImpl[F[_]: MonadCancelThrow](tr: Transactor[F]) exten
     dc.run { liftQuery(results).foreach(r => resultSchema.insert(r).onConflictIgnore) }.map(_ => ()).transact(tr)
 
 
-  def getResults(services: Set[ServiceId], start: Timestamp, end: Timestamp): F[List[HealthCheckResult]] =
+  def getResults(services: Set[ServiceId], start: Timestamp, end: Timestamp): Stream[F, HealthCheckResult] =
     {
-      if (services.isEmpty)
-        dc.run {
+      if (services.isEmpty) {
+        dc.stream {
           resultSchema
             .filter(r => r.time > lift(start))
             .filter(r => r.time < lift(end))
         }
-      else
-        dc.run {
+      } else
+        dc.stream {
           resultSchema
             .filter(r => liftQuery(services).contains(r.id))
             .filter(r => r.time > lift(start))
             .filter(r => r.time < lift(end))
         }
-    }.map(x=> x).transact(tr)
+    }.map(x => x).transact(tr)
 
-  override def getFailures(services: Set[ServiceId], start: Timestamp, end: Timestamp): F[List[HealthCheckResult]] =
+  override def getFailures(services: Set[ServiceId], start: Timestamp, end: Timestamp): Stream[F, HealthCheckResult] =
     {
       if (services.isEmpty)
-        dc.run {
+        dc.stream {
           resultSchema
             .filter(r => r.time > lift(start))
             .filter(r => r.time < lift(end))
             .filter(r => r.code >= lift(400))
         }
       else
-        dc.run {
+        dc.stream {
           resultSchema
             .filter(r => liftQuery(services).contains(r.id))
             .filter(r => r.time > lift(start))

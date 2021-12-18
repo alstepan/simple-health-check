@@ -30,11 +30,11 @@ class Statistics[F[_]: Temporal](healthStatRepo: HealthCheckRepository[F]) {
     case GET -> root / "query" :? Services(servicesIds) +& StartTime(start) +& EndTime(end) =>
       for {
         time <- Temporal[F].realTime
-        results <- healthStatRepo
+        results = healthStatRepo
           .getResults(servicesIds.map(s => s.map(ServiceId)).getOrElse(Set()),
             start.getOrElse(new Timestamp(0)), end.getOrElse(new Timestamp(time.toMillis))
           )
-        resp <- Ok(results.asJson.toString)
+        resp <- Ok(results)
       } yield resp
   }
 
@@ -42,11 +42,11 @@ class Statistics[F[_]: Temporal](healthStatRepo: HealthCheckRepository[F]) {
     case GET -> root / "failures" :? Services(servicesIds) +& StartTime(start) +& EndTime(end) =>
       for {
         time <- Temporal[F].realTime
-        results <- healthStatRepo
+        results = healthStatRepo
           .getFailures(servicesIds.map(s => s.map(ServiceId)).getOrElse(Set()),
             start.getOrElse(new Timestamp(0)), end.getOrElse(new Timestamp(time.toMillis))
           )
-        resp <- Ok(results.asJson.toString)
+        resp <- Ok(results)
       } yield resp
   }
 

@@ -1,5 +1,6 @@
 package me.alstepan.healthcheck.API
 
+import cats.Applicative
 import io.circe.generic.semiauto._
 import io.circe.literal._
 import io.circe.syntax._
@@ -9,6 +10,9 @@ import java.net.URI
 import java.sql.Timestamp
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.util.Try
+import fs2._
+import org.http4s.{EntityEncoder, MediaType}
+import org.http4s.headers._
 
 
 object JsonFormats {
@@ -29,4 +33,12 @@ object JsonFormats {
   implicit val encoderService: Encoder[Service] = deriveEncoder[Service]
   implicit val encoderCheckResult: Encoder[HealthCheckResult] = deriveEncoder[HealthCheckResult]
 
+  implicit def streamAsJsonArrayEncoder[F[_], T](implicit F: Applicative[F], tEncoder: Encoder[T]): EntityEncoder[F, Stream[F, T]] =
+    EntityEncoder
+      .streamEncoder[F, String]
+      .contramap[Stream[F, T]](
+        stream => Stream.emit("[") ++
+        stream.map(t => t.asJson.noSpaces).intersperse(",") ++
+        Stream.emit("]")
+      )
 }
