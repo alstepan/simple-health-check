@@ -54,7 +54,7 @@ class HealthChecker[F[_]: Temporal](
 
 
 
-  def runChecks: F[Nothing] = {
+  def runChecks: F[Nothing] =
     (
       Temporal[F].sleep(config.scanFrequency) *>
       serviceRepo
@@ -62,9 +62,6 @@ class HealthChecker[F[_]: Temporal](
         .flatMap(l => Temporal[F].parTraverseN(config.parallelism)(l)(request))
         .flatMap(r => healthCheckRepo.saveCheckResults(r))
     ).foreverM
-  }
-
-
 }
 
 object HealthChecker {
