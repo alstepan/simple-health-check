@@ -18,7 +18,7 @@ class ServiceRepositoryImpl[F[_]: Concurrent](services: Ref[F, Map[ServiceId, Se
   override def register(srv: Services.Service): EitherT[F, ServiceRepository.Error, Unit] =
     for {
       y <- service(srv.id)
-        .map(_ => ())
+        .flatMap(_ => EitherT(ServiceRepository.ServiceAlreadyRegistered(srv.id).asInstanceOf[ServiceRepository.Error].asLeft[Unit].pure[F]))
         .recoverWith {
           case ServiceRepository.ServiceNotFound(_) =>
             EitherT.right(services.update(m => m ++ Map(srv.id -> srv)))
