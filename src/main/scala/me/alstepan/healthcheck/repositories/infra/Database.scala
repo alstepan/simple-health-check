@@ -4,18 +4,9 @@ import cats.implicits._
 import cats.effect.{Async, Resource, Sync}
 import doobie.hikari.HikariTransactor
 import doobie.quill.DoobieContext
-import io.getquill.mirrorContextWithQueryProbing.{InfixInterpolator, quote}
-import io.getquill.{Escape, Literal, MappedEncoding, NamingStrategy}
-import me.alstepan.healthcheck.Domain.Services.ServiceId
+import io.getquill.{Escape, Literal, NamingStrategy}
 import me.alstepan.healthcheck.config.DatabaseConfig
 import org.flywaydb.core.Flyway
-
-import java.net.URI
-import java.sql.Timestamp
-import java.time.Instant
-import java.util.Date
-import scala.concurrent.duration.{DurationLong, FiniteDuration}
-
 
 object Database {
 

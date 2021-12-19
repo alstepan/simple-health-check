@@ -6,6 +6,15 @@
     <body>
 
         <div>
+            <label for="services">Services:</label>
+            <input type="text" id="services" name="services">
+            <label for="from">From:</label>
+            <input type="text" id="from" name="from">
+            <label for="to">To:</label>
+            <input type="text" id="to" name="to">
+            <button type="button" onclick="doUpdate();">Update</button>
+        </div>
+        <div>
             <canvas id="myChart"></canvas>
         </div>
 
@@ -13,6 +22,8 @@
         <script src="jquery-3.6.0.js"></script>
 
 <script>
+  var baseUrl = 'http://localhost:8080/stat/query';
+  var url = baseUrl;
   const labels = [ ];
   const data = {
     labels: labels,
@@ -48,12 +59,29 @@
     max = Math.floor(max);
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
+
+  function doUpdate() {
+    url = baseUrl
+    var srv = document.getElementById('services').value
+    if (srv) url += '?services=' + srv
+    var from = document.getElementById('from').value
+    if (from) url += (srv ? '&' : '?') + 'start=' + from
+    var to = document.getElementById('to').value
+    if (to) url += ((srv || from) ? '&' : '?') + 'end=' +  to
+    getData()
+  }
  
-  var colors = Array(100).fill(`rgb(${rnd(0,150)}, ${rnd(0,150)}, ${rnd(0,150)})`)
+  //random pallete
+  var colors = [];
+  for (var r = 0; r < 190; r+=10)
+    for (var g = 0; g < 190; g+=10)
+      for (var b = 0; b < 190; b+=10)
+        colors.push(`rgb(${r}, ${g}, ${b})`)
+  colors.sort(() => Math.random() - 0.5);
 
   var getData = function() {
   $.ajax({
-    url: 'http://localhost:8080/stat/query',
+    url: url,
     success: function(d) {
       myChart.data.labels = []
       myChart.data.datasets = [];
@@ -72,6 +100,7 @@
 		myChart.data.datasets.push({
       			label: data[i].id,
                         borderColor: colors[count],
+                        backgroundColor: colors[count],
 			data: []
 		})
 	 }
@@ -90,7 +119,8 @@
   });
   };
   setInterval(getData, 3000);
-
+ 
+  getData()
 
 </script>
 
