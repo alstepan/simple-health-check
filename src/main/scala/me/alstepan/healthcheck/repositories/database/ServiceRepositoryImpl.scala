@@ -27,19 +27,19 @@ class ServiceRepositoryImpl[F[_]: MonadCancelThrow](tr: Transactor[F]) extends S
     querySchema[Service]("services", _.maxTimeout -> "maxtimeout")
   }
 
-  override def register(service: Services.Service): EitherT[F, ServiceRepository.Error, Unit] =
-    EitherT {
-      {
-        for {
-          _ <- serviceQuery(service.id)
-          x <-
-            dc
-              .run(serviceSchema.insert(lift(service)))
-              .map(x => ().asRight[ServiceRepository.Error])
-        } yield x
-      }.transact(tr)
-    }
-
+  override def register(srv: Service): EitherT[F, ServiceRepository.Error, Unit] =
+    for {
+      y <- service(srv.id)
+        .flatMap(_ => EitherT(ServiceRepository.ServiceAlreadyRegistered(srv.id).asInstanceOf[ServiceRepository.Error].asLeft[Unit].pure[F]))
+        .recoverWith {
+          case ServiceRepository.ServiceNotFound(_) =>
+            EitherT.right{
+              dc.run{ serviceSchema.insert(lift(srv)) }
+                .map(_ => ())
+                .transact(tr)
+            }
+        }
+    } yield y
 
   override def unregister(serviceId: ServiceId): EitherT[F, ServiceRepository.Error, Unit] =
     EitherT {
@@ -51,16 +51,16 @@ class ServiceRepositoryImpl[F[_]: MonadCancelThrow](tr: Transactor[F]) extends S
       } yield x
     }.transact(tr)
 
-  override def list(): F[List[Services.Service]] =
+  override def list(): F[List[Service]] =
     dc.run(serviceSchema).map(x => x).transact(tr)
 
-  override def service(serviceId: Services.ServiceId): EitherT[F, ServiceRepository.Error, Services.Service] =
+  override def service(serviceId: ServiceId): EitherT[F, ServiceRepository.Error, Service] =
     EitherT {
       serviceQuery(serviceId)
         .transact(tr)
     }
 
-  private def serviceQuery(serviceId: Services.ServiceId) =
+  private def serviceQuery(serviceId: ServiceId) =
     dc.run(serviceSchema.filter(s => s.id == lift(serviceId)))
       .map(x => x.headOption.toRight[ServiceRepository.Error](ServiceNotFound(serviceId)))
 }
