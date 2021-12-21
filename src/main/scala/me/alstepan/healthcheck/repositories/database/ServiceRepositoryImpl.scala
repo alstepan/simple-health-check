@@ -8,8 +8,7 @@ import cats.effect.implicits._
 import doobie.Transactor
 import doobie.implicits._
 import doobie.quill.DoobieContext
-import io.getquill.{CompositeNamingStrategy2, EntityQuery, Escape, Literal}
-import me.alstepan.healthcheck.Domain.Services
+import io.getquill.{CompositeNamingStrategy2, Escape, Literal}
 import me.alstepan.healthcheck.Domain.Services.{Service, ServiceId}
 import me.alstepan.healthcheck.repositories.ServiceRepository
 import me.alstepan.healthcheck.repositories.ServiceRepository.ServiceNotFound
@@ -28,18 +27,23 @@ class ServiceRepositoryImpl[F[_]: MonadCancelThrow](tr: Transactor[F]) extends S
   }
 
   override def register(srv: Service): EitherT[F, ServiceRepository.Error, Unit] =
-    for {
-      y <- service(srv.id)
-        .flatMap(_ => EitherT(ServiceRepository.ServiceAlreadyRegistered(srv.id).asInstanceOf[ServiceRepository.Error].asLeft[Unit].pure[F]))
-        .recoverWith {
-          case ServiceRepository.ServiceNotFound(_) =>
-            EitherT.right{
-              dc.run{ serviceSchema.insert(lift(srv)) }
-                .map(_ => ())
-                .transact(tr)
-            }
+    service(srv.id)
+      .flatMap(_ => EitherT{
+        ServiceRepository
+          .ServiceAlreadyRegistered(srv.id)
+          .asInstanceOf[ServiceRepository.Error]
+          .asLeft[Unit]
+          .pure[F]
         }
-    } yield y
+      )
+      .recoverWith {
+        case ServiceRepository.ServiceNotFound(_) =>
+          EitherT.right{
+            dc.run{ serviceSchema.insert(lift(srv)) }
+              .map(_ => ())
+              .transact(tr)
+          }
+      }
 
   override def unregister(serviceId: ServiceId): EitherT[F, ServiceRepository.Error, Unit] =
     EitherT {
@@ -55,10 +59,7 @@ class ServiceRepositoryImpl[F[_]: MonadCancelThrow](tr: Transactor[F]) extends S
     dc.run(serviceSchema).map(x => x).transact(tr)
 
   override def service(serviceId: ServiceId): EitherT[F, ServiceRepository.Error, Service] =
-    EitherT {
-      serviceQuery(serviceId)
-        .transact(tr)
-    }
+    EitherT { serviceQuery(serviceId).transact(tr) }
 
   private def serviceQuery(serviceId: ServiceId) =
     dc.run(serviceSchema.filter(s => s.id == lift(serviceId)))

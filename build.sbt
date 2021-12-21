@@ -31,10 +31,10 @@ libraryDependencies ++= Seq(
   "io.circe"      %% "circe-generic"        % "0.14.1",
   "io.circe"      %% "circe-literal"        % "0.14.1",
   // http4s
-  "org.http4s"    %% "http4s-dsl"           % "0.23.6",
-  "org.http4s"    %% "http4s-circe"         % "0.23.6",
-  "org.http4s"    %% "http4s-blaze-server"  % "0.23.6",
-  "org.http4s"    %% "http4s-blaze-client"  % "0.23.6",
+  "org.http4s"    %% "http4s-dsl"           % "0.23.7",
+  "org.http4s"    %% "http4s-circe"         % "0.23.7",
+  "org.http4s"    %% "http4s-blaze-server"  % "0.23.7",
+  "org.http4s"    %% "http4s-blaze-client"  % "0.23.7",
   //postgres
   "org.postgresql" % "postgresql"           % "42.3.1",
   //flyway
