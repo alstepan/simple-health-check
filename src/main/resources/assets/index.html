@@ -93,7 +93,8 @@
       data = data.slice(Math.max(data.length - 50, 0))
 
       for(var i=0; i<data.length; i++) {
-         if (!myChart.data.labels.includes(data[i].time)) myChart.data.labels.push(data[i].time);
+         var time = data[i].time.split('.')[0]
+         if (!myChart.data.labels.includes(time)) myChart.data.labels.push(time);
          if (!(data[i].id in services)) {
 		services[data[i].id]=count;
 		count++;
