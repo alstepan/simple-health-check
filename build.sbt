@@ -18,6 +18,8 @@ ThisBuild / assemblyMergeStrategy := {
     oldStrategy(x)
 }
 
+Test / fork := true
+
 libraryDependencies ++= Seq(
   // cats
   "org.typelevel" %% "cats-core"            % "2.7.0",
@@ -52,6 +54,7 @@ libraryDependencies ++= Seq(
 
   //tests
   "org.scalactic" %% "scalactic"            % "3.2.10",
-  "org.scalatest" %% "scalatest"            % "3.2.10" % "test"
+  "org.scalatest" %% "scalatest"            % "3.2.10" % Test,
+  "org.typelevel" %% "cats-effect-testing-scalatest" % "1.3.0" % Test,
 )
 

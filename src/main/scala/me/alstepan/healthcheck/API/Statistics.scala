@@ -6,7 +6,7 @@ import io.circe.syntax._
 import me.alstepan.healthcheck.Domain.Services.ServiceId
 import me.alstepan.healthcheck.repositories.HealthCheckRepository
 import org.http4s.dsl.Http4sDsl
-import org.http4s.{HttpRoutes, QueryParamDecoder}
+import org.http4s.{HttpRoutes, ParseFailure, QueryParamDecoder}
 
 import java.sql.Timestamp
 
@@ -19,7 +19,11 @@ class Statistics[F[_]: Temporal](healthStatRepo: HealthCheckRepository[F]) {
     QueryParamDecoder[String].map(s => s.split(",").toSet)
 
   implicit val timeQueryParamDecoder: QueryParamDecoder[Timestamp] =
-    QueryParamDecoder[String].map(s => Timestamp.valueOf(s))
+    QueryParamDecoder[String].emap(s =>
+      Either
+        .catchNonFatal(Timestamp.valueOf(s))
+        .leftMap(_ => ParseFailure(s, s"Cannot convert $s to Timestamp"))
+    )
 
 
   object Services extends OptionalQueryParamDecoderMatcher[Set[String]]("services")

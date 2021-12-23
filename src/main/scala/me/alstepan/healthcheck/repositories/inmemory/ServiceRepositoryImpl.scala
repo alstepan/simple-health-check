@@ -43,8 +43,5 @@ object ServiceRepositoryImpl {
     for {
       services <- Ref.of[F, Map[ServiceId, Service]](Map())
       impl = new ServiceRepositoryImpl[F](services)
-      _ <- impl
-        .register(Service(ServiceId("srvid123"), "Sample Service", URI.create("http://localhost:8086"), 5.seconds))
-        .foldF(err => Concurrent[F].unit, succ => Concurrent[F].unit)
     } yield impl
 }
