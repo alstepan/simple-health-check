@@ -1,24 +1,28 @@
 package me.alstepan.healthcheck
 
-import cats.effect._
-import cats.implicits._
+import cats.effect.*
+import cats.implicits.*
 import doobie.Transactor
 import me.alstepan.healthcheck.API.{ServiceRegistry, Statistics}
 import me.alstepan.healthcheck.config.{AppConfig, DatabaseConfig, HealthCheckConfig, ServerConfig}
 import me.alstepan.healthcheck.repositories.infra.Database
 import me.alstepan.healthcheck.repositories.{HealthCheckRepository, ServiceRepository}
 import me.alstepan.healthcheck.services.HealthChecker
-import org.http4s.blaze.client.BlazeClientBuilder
-import org.http4s.blaze.server.BlazeServerBuilder
-import org.http4s.implicits._
-import org.http4s.server.middleware._
-import org.http4s.server.staticcontent._
+import org.http4s.ember.client.EmberClientBuilder
+import org.http4s.ember.server.EmberServerBuilder
+import org.http4s.implicits.*
+import org.http4s.server.middleware.*
+import org.http4s.server.staticcontent.*
 import org.http4s.server.{Router, Server}
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import pureconfig._
-import pureconfig.generic.auto._
+import io.circe.*
+import io.circe.generic.auto.*
+import io.circe.yaml
+import  me.alstepan.healthcheck.API.JsonFormats.given
 
 import scala.concurrent.duration.DurationInt
+import scala.io.Source
+import com.comcast.ip4s.*
 
 object Server extends IOApp {
 
@@ -59,12 +63,14 @@ object Server extends IOApp {
 
   def createServer[F[_]: Async]: Resource[F, (Server, HealthChecker[F])] =
     for {
+      logger <- Resource.eval(Slf4jLogger.create[F])
       config <- Resource.eval(
         Async[F].delay(
-          ConfigSource
-            .default
-            .load[AppConfig]
-            .getOrElse(defaultConfig)
+            yaml
+              .parser
+              .parse(Source.fromResource("application.yaml").reader())
+              .flatMap(_.as[AppConfig])
+              .getOrElse(defaultConfig)     
         )
       )
 
@@ -77,12 +83,15 @@ object Server extends IOApp {
           "monitor" -> resourceServiceBuilder[F]("/assets").toRoutes
         ).orNotFound
       )
+      client = EmberClientBuilder.default[F].build
       checker <- Resource.eval(
-        HealthChecker.apply[F](BlazeClientBuilder[F].resource, environment.serviceRepo, environment.healchCheckRepo, config.checkerConf))
-      server <- BlazeServerBuilder[F]
-        .bindHttp(config.serverConf.port, config.serverConf.host)
+        HealthChecker.apply[F](client, environment.serviceRepo, environment.healchCheckRepo, config.checkerConf))
+      server <- EmberServerBuilder.default[F]
+        .withHost(Host.fromString(config.serverConf.host).getOrElse(host"localhost"))
+        .withPort(Port.fromInt(config.serverConf.port).getOrElse(port"8080"))
         .withHttpApp(httpApp)
-        .resource
+        .withLogger(logger)
+        .build
     } yield (server, checker)
 
 

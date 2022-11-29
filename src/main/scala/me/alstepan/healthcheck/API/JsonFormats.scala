@@ -13,6 +13,7 @@ import scala.util.Try
 import fs2._
 import org.http4s.{EntityEncoder, MediaType}
 import org.http4s.headers._
+import me.alstepan.healthcheck.config.AppConfig
 
 
 object JsonFormats {
@@ -25,6 +26,7 @@ object JsonFormats {
   implicit val decoderTimestamp: Decoder[Timestamp] = Decoder.decodeString.emapTry( s => Try(Timestamp.valueOf(s)))
   implicit val decoderService: Decoder[Service] = deriveDecoder[Service]
   implicit val decoderCheckResult: Decoder[HealthCheckResult] = deriveDecoder[HealthCheckResult]
+  implicit val decoderConfig: Decoder[AppConfig] = deriveDecoder[AppConfig]
 
   implicit val encoderServiceId: Encoder[ServiceId] = (a: ServiceId) => a.value.asJson
   implicit val encoderUri: Encoder[URI] = (u: URI) => u.toString.asJson

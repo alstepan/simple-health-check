@@ -1,8 +1,8 @@
 package me.alstepan.healthcheck.API
 
 import cats.effect.Temporal
-import cats.data._
-import cats.implicits._
+import cats.data.*
+import cats.implicits.*
 import fs2.Stream
 import me.alstepan.healthcheck.Domain.Services.{HealthCheckResult, ServiceId}
 import me.alstepan.healthcheck.repositories.HealthCheckRepository
@@ -13,8 +13,8 @@ import java.sql.Timestamp
 
 class Statistics[F[_]: Temporal](healthStatRepo: HealthCheckRepository[F]) {
   object dsl extends Http4sDsl[F]
-  import dsl._
-  import me.alstepan.healthcheck.API.JsonFormats._
+  import dsl.*
+  import me.alstepan.healthcheck.API.JsonFormats.*
 
   implicit val servicesQueryParamDecoder: QueryParamDecoder[Set[String]] =
     QueryParamDecoder[String].map(s => s.split(",").toSet)
@@ -47,7 +47,7 @@ class Statistics[F[_]: Temporal](healthStatRepo: HealthCheckRepository[F]) {
                             ): F[Response[F]] =
     for {
       time <- Temporal[F].realTime
-      srv = servicesIds.map(s => s.map(ServiceId)).getOrElse(Set())
+      srv = servicesIds.map(s => s.map(ServiceId.apply)).getOrElse(Set())
       st = start.getOrElse(Validated.validNel(new Timestamp(0)))
       ed = end.getOrElse(Validated.validNel(new Timestamp(time.toMillis)))
       results = for {

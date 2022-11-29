@@ -1,0 +1,15 @@
+---
+serverConf:
+  host: localhost
+  port: 8080
+checkerConf:
+  scanFrequency: 10000
+  parallelism: 4
+dbConf:
+  Some:
+    value:
+      user: docker
+      poolSize: 2
+      driver: org.postgresql.Driver
+      password: docker
+      url: jdbc:postgresql://localhost:5432/simple_health_check
