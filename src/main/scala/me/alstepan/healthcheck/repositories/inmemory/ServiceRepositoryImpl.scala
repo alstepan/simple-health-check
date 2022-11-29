@@ -1,47 +1,53 @@
 package me.alstepan.healthcheck.repositories.inmemory
 
-import cats.data.EitherT
-import cats.implicits._
-import cats.effect.implicits._
-import cats.effect.{Concurrent, Ref}
-import me.alstepan.healthcheck.Domain.Services
-import me.alstepan.healthcheck.Domain.Services.{Service, ServiceId}
+import zio.*
+import me.alstepan.healthcheck.repositories.*
 import me.alstepan.healthcheck.repositories.ServiceRepository
-import me.alstepan.healthcheck.repositories.ServiceRepository.ServiceNotFound
+import me.alstepan.healthcheck.Domain.{Service, ServiceId}
+import zio.stream.ZStream
 
 import java.net.URI
 import scala.concurrent.duration.DurationInt
 
-
-class ServiceRepositoryImpl[F[_]: Concurrent](services: Ref[F, Map[ServiceId, Service]]) extends ServiceRepository[F] {
-  override def register(srv: Services.Service): EitherT[F, ServiceRepository.Error, Unit] =
-    service(srv.id)
-      .flatMap(_ => EitherT(ServiceRepository.ServiceAlreadyRegistered(srv.id).asInstanceOf[ServiceRepository.Error].asLeft[Unit].pure[F]))
-      .recoverWith {
-        case ServiceRepository.ServiceNotFound(_) =>
-          EitherT.right(services.update(m => m ++ Map(srv.id -> srv)))
-      }
-
-  override def unregister(serviceId: ServiceId): EitherT[F, ServiceRepository.Error, Unit] =
+case class ServiceRepositoryImpl(services: Ref[Map[ServiceId, Service]]) extends ServiceRepository:
+  override def register(service: Service): IO[Error, Unit] =
     for {
-      _ <- service(serviceId)
-      x <- EitherT(services.update(m => m.removed(serviceId)).map(_.asRight[ServiceRepository.Error]))
-    } yield x
+      srvs <- services.get
+      _ <- ZIO.cond(!srvs.contains(service.id), srvs, ServiceAlreadyRegistered(service.id))
+      _ <- services.update(srv => srv + (service.id -> service))
+    } yield()
 
-  override def list(): F[List[Services.Service]] = services.get.map(m => m.values.toList)
+  override def unregister(serviceId: ServiceId): IO[Error, Unit] =
+    for {
+      srvs <- services.get
+      _ <- ZIO.cond(srvs.contains(serviceId), srvs, ServiceNotFound(serviceId))
+      _ <- services.getAndUpdate(srv => srv - serviceId)
+    } yield ()
 
-  override def service(serviceId: ServiceId): EitherT[F, ServiceRepository.Error, Service] =
-    EitherT(
+  override def list(): ZStream[Any, Throwable, Service] =
+    ZStream.fromIterableZIO {
       services
         .get
-        .map(m => m.get(serviceId).toRight[ServiceRepository.Error](ServiceNotFound(serviceId)))
-    )
-}
+        .map(m => m.values)
+    }
 
-object ServiceRepositoryImpl {
-  def apply[F[_]: Concurrent]: F[ServiceRepository[F]] =
-    for {
-      services <- Ref.of[F, Map[ServiceId, Service]](Map())
-      impl = new ServiceRepositoryImpl[F](services)
-    } yield impl
-}
+
+  override def service(serviceId: ServiceId): IO[Error, Service] =
+    services
+      .get
+      .flatMap{srvs =>
+        ZIO
+          .fromOption(srvs.get(serviceId))
+          .orElseFail(ServiceNotFound(serviceId))
+      }
+
+
+object ServiceRepositoryImpl:
+  val layer: ZLayer[Any, Nothing, ServiceRepositoryImpl] =
+    ZLayer {
+      (for {
+        srv <- Ref.make(Map[ServiceId, Service]())
+        _ <- srv.update(_ => Map(ServiceId("asd") -> Service(ServiceId("asd"), "qwe", URI.create("http://localhost"), 3.millis)))
+      } yield ServiceRepositoryImpl(srv)).debug("Initialized ref")
+    }
+

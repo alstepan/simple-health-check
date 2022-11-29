@@ -1,65 +1,51 @@
 package me.alstepan.healthcheck.API
 
-import cats.effect.Concurrent
-import cats.implicits._
-import io.circe.Encoder._
-import io.circe.parser.parse
-import io.circe.syntax._
-import me.alstepan.healthcheck.Domain.Services._
-import me.alstepan.healthcheck.repositories.ServiceRepository
-import org.http4s._
-import org.http4s.dsl.Http4sDsl
-
-class ServiceRegistry[F[_]: Concurrent](serviceRepo: ServiceRepository[F]) {
-
-  object dsl extends Http4sDsl[F]
-  import dsl._
-  import me.alstepan.healthcheck.API.JsonFormats._
-
-  private def registerService: HttpRoutes[F] = HttpRoutes.of[F] {
-    case req @ POST -> root / "add" =>
-      for {
-        srvs <- req.bodyText.compile.string.flatMap(s => parse(s).flatMap(_.as[Service]).pure[F])
-        resp <- srvs.fold(
-          err => BadRequest(s"Cannot parse request body: $err"),
-          srv => serviceRepo
-            .register(srv)
-            .foldF(
-              err => NotAcceptable(s"Service already registered: $err"),
-              _ => Ok()
-            )
-        )
-      } yield resp
-  }
-
-  private def unregisterService: HttpRoutes[F] = HttpRoutes.of[F] {
-    case  DELETE -> root / "remove" / id =>
-      serviceRepo
-        .unregister(ServiceId(id))
-        .foldF(e => NotFound(s"Service $id was not found"), _ => NoContent())
-  }
-
-  private def listServices: HttpRoutes[F] = HttpRoutes.of[F] {
-    case GET -> root / "list" =>
-      serviceRepo
-        .list()
-        .flatMap(s => Ok(s.asJson.toString()))
-  }
-
-  private def serviceDetails: HttpRoutes[F] = HttpRoutes.of[F] {
-    case GET -> root / "service" / id =>
-      serviceRepo
-        .service(ServiceId(id))
-        .foldF(e => NotFound(s"Service $id was not found"), srv => Ok(srv.asJson.toString()))
-  }
-
-  def endpoints = {
-    registerService <+> unregisterService <+> listServices <+> serviceDetails
-  }
-
-}
+import zio.*
+import zio.stream.*
+import zhttp.http.*
+import zio.json.*
+import me.alstepan.healthcheck.repositories.*
+import me.alstepan.healthcheck.Domain.{Service, ServiceId}
 
 object ServiceRegistry {
-  def endpoints[F[_]: Concurrent](serviceRepo: ServiceRepository[F]) =
-    new ServiceRegistry[F](serviceRepo).endpoints
+
+  import JsonFormats.given
+
+  def register: Http[ServiceRepository, Nothing, Request, Response] = Http.collectZIO[Request] {
+    case req@ Method.POST -> !! / "registry" / "add" =>
+      (for {
+        srv <- req.body.asString.flatMap(b => ZIO.fromEither(b.fromJson[Service]))
+        _ <- ServiceRepository.register(srv)
+      } yield Response.ok).orElse( ZIO.succeed(Response.status(Status.BadRequest)))
+  }
+
+  def list: Http[ServiceRepository, Nothing, Request, Response] = Http.collectHttp[Request] {
+    case Method.GET -> !! / "registry" / "list" =>
+      Http.fromStream(
+        ZStream.fromIterable("[".getBytes(HTTP_CHARSET))
+          ++ ServiceRepository
+              .list()
+              .map(_.toJson)
+              .intersperse(",")
+              .flatMap(s => ZStream.fromIterable(s.getBytes(HTTP_CHARSET)))
+          ++ ZStream.fromIterable("]".getBytes(HTTP_CHARSET))
+      )
+  }
+
+  def service: Http[ServiceRepository, Nothing, Request, Response] = Http.collectZIO[Request] {
+    case Method.GET -> !! / "registry" / "service" / id =>
+      (for {
+        s <- ServiceRepository.service(ServiceId(id))
+      } yield Response.json(s.toJson)).orElse(ZIO.succeed(Response.status(Status.NotFound)))
+  }
+
+  def unregister: Http[ServiceRepository, Nothing, Request, Response] = Http.collectZIO[Request] {
+    case Method.DELETE -> !! / "registry" / "remove" / id =>
+      (for {
+        s <- ServiceRepository.unregister(ServiceId(id))
+      } yield Response.status(Status.NoContent)).orElse(ZIO.succeed(Response.status(Status.NotFound)))
+
+  }
+
+  def all  = register ++ list ++ service ++ unregister
 }
